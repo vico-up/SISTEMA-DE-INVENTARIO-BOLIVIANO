@@ -1,0 +1,13 @@
+
+# Apps Script / Environment
+.vscode/
+.clasp.json
+node_modules/
+dist/
+
+# System files
+Thumbs.db
+.DS_Store
+
+# Geminy/Antigravity artifacts (optional to ignore, but usually better in GitHub)
+# .gemini/

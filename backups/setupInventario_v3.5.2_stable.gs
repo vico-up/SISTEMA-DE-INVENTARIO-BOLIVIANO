@@ -1,8 +1,9 @@
 
 /**
- * SISTEMA DE INVENTARIO BOLIVIANO - Versión 3.5 (Modular)
+ * SISTEMA DE INVENTARIO BOLIVIANO - Versión 3.5.2 (Modular)
  * 
- * Divide la configuración en 3 pasos seguros para evitar timeouts.
+ * Divide la configuración en pasos seguros para evitar timeouts.
+ * Incluye correción en fórmula de Utilidad Neta.
  */
 
 const IVA_RATE = 0.13;
@@ -21,7 +22,6 @@ function paso1_Estructura() {
   const ui = SpreadsheetApp.getUi();
   
   try {
-    // 1. Gestión de Hojas
     let sheetInv = ss.getSheetByName('Inventario');
     if (sheetInv) {
       sheetInv.clear();
@@ -43,7 +43,6 @@ function paso1_Estructura() {
     }
     sheetMarcas.hideSheet();
     
-    // 2. Encabezados
     const headers = [
       'SKU', 'Marca', 'Nombre Producto', 'Descripción', 'Categoría', 
       'Stock Actual', 'Stock Mínimo', 'Costo Unitario', 'Crédito Fiscal (13%)', 
@@ -61,7 +60,6 @@ function paso1_Estructura() {
       
     sheetInv.setFrozenRows(1);
     
-    // 3. Anchos
     const anchos = [100, 120, 200, 250, 120, 90, 90, 110, 110, 110, 110, 110, 110, 110, 100, 110, 110, 110, 110];
     anchos.forEach((w, i) => sheetInv.setColumnWidth(i + 1, w));
     
@@ -74,12 +72,6 @@ function paso1_Estructura() {
 }
 
 /**
- * Paso 2: Aplica formatos y validaciones
- */
-/**
- * Paso 2: Aplica formatos y validaciones
- */
-/**
  * Paso 2A: Formato de Stocks (Numérico)
  */
 function paso2a_Stocks() {
@@ -90,17 +82,11 @@ function paso2a_Stocks() {
   if (!sheetInv) { ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.'); return; }
   
   try {
-    console.log('--- INICIO PASO 2A (STOCKS) ---');
-    // 1. Formato Stocks
     const range = sheetInv.getRange(2, 6, FILAS_INICIALES, 2);
     range.setNumberFormat('0');
     SpreadsheetApp.flush();
-    
-    console.log('--- PASO 2A COMPLETADO ---');
     ui.alert('✅ PASO 2A COMPLETADO: Stocks formateados.');
-    
   } catch (e) {
-    console.error('ERROR EN PASO 2A: ' + e.toString());
     ui.alert('❌ Error en Paso 2A: ' + e.toString());
   }
 }
@@ -116,20 +102,12 @@ function paso2b_Moneda() {
   if (!sheetInv) { ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.'); return; }
   
   try {
-    console.log('--- INICIO PASO 2B (MONEDA) ---');
-    // 2. Formato Costos (Simplificado para evitar error de locale)
-    sheetInv.getRange(2, 8, FILAS_INICIALES, 4).setNumberFormat('#,##0.00'); // H-K
+    sheetInv.getRange(2, 8, FILAS_INICIALES, 4).setNumberFormat('#,##0.00');
     SpreadsheetApp.flush();
-    
-    // 3. Formato Precios (Simplificado)
-    sheetInv.getRange(2, 13, FILAS_INICIALES, 7).setNumberFormat('#,##0.00'); // M-S
+    sheetInv.getRange(2, 13, FILAS_INICIALES, 7).setNumberFormat('#,##0.00');
     SpreadsheetApp.flush();
-    
-    console.log('--- PASO 2B COMPLETADO ---');
-    ui.alert('✅ PASO 2B COMPLETADO: Moneda formateada (Formato estándar para estabilidad).');
-    
+    ui.alert('✅ PASO 2B COMPLETADO: Moneda formateada.');
   } catch (e) {
-    console.error('ERROR EN PASO 2B: ' + e.toString());
     ui.alert('❌ Error en Paso 2B: ' + e.toString());
   }
 }
@@ -145,16 +123,10 @@ function paso2c_Porcentaje() {
   if (!sheetInv) { ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.'); return; }
   
   try {
-    console.log('--- INICIO PASO 2C (PORCENTAJE) ---');
-    // 4. Formato Margen
     sheetInv.getRange(2, 12, FILAS_INICIALES, 1).setNumberFormat('0.00%');
     SpreadsheetApp.flush();
-    
-    console.log('--- PASO 2C COMPLETADO ---');
-    ui.alert('✅ PASO 2C COMPLETADO: Porcentajes formateados.\n\n👉 Ahora ve al Paso 3.');
-    
+    ui.alert('✅ PASO 2C COMPLETADO: Porcentajes formateados.');
   } catch (e) {
-    console.error('ERROR EN PASO 2C: ' + e.toString());
     ui.alert('❌ Error en Paso 2C: ' + e.toString());
   }
 }
@@ -171,9 +143,6 @@ function paso2d_Validacion() {
   if (!sheetInv || !sheetMarcas) { ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.'); return; }
   
   try {
-    console.log('--- INICIO PASO 2D (VALIDACIÓN) ---');
-    
-    // 1. Asegurar marcas iniciales
     sheetMarcas.showSheet();
     if (sheetMarcas.getLastRow() < 1) {
       const marcas = [['Genérico'], ['Sony'], ['Samsung'], ['TP-Link'], ['Xiaomi']];
@@ -181,7 +150,6 @@ function paso2d_Validacion() {
     }
     SpreadsheetApp.flush();
     
-    // 2. Crear y aplicar regla
     const rangeMarcas = sheetMarcas.getRange('A1:A100');
     const rule = SpreadsheetApp.newDataValidation()
       .requireValueInRange(rangeMarcas, true)
@@ -191,12 +159,8 @@ function paso2d_Validacion() {
     sheetInv.getRange(2, 2, FILAS_INICIALES).setDataValidation(rule);
     sheetMarcas.hideSheet();
     SpreadsheetApp.flush();
-    
-    console.log('--- PASO 2D COMPLETADO ---');
     ui.alert('✅ PASO 2D COMPLETADO: Lista desplegable de marcas activada.');
-    
   } catch (e) {
-    console.error('ERROR EN PASO 2D: ' + e.toString());
     ui.alert('❌ Error en Paso 2D: ' + e.toString());
   }
 }
@@ -209,13 +173,9 @@ function paso3_Datos() {
   const ui = SpreadsheetApp.getUi();
   const sheetInv = ss.getSheetByName('Inventario');
   
-  if (!sheetInv) {
-    ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.');
-    return;
-  }
+  if (!sheetInv) { ui.alert('⚠️ Error: Ejecuta el Paso 1 primero.'); return; }
   
   try {
-    // 1. Fórmulas
     const formulas = [];
     for (let i = 2; i <= FILAS_INICIALES + 1; i++) {
       formulas.push([
@@ -235,7 +195,6 @@ function paso3_Datos() {
     sheetInv.getRange(2, 9, formulas.length, 11).setFormulas(formulas);
     SpreadsheetApp.flush();
     
-    // 2. Datos de Ejemplo
     const ejemplo = [
       ['CAM001', 'Sony', 'Sony A7 IV', 'Cámara Mirrorless', 'Fotografía', 5, 2, 10000, '', 500, '', 0.35],
       ['NET042', 'TP-Link', 'Archer AX50', 'Router Wi-Fi 6', 'Redes', 15, 5, 450, '', 0, '', 0.40]
@@ -249,8 +208,7 @@ function paso3_Datos() {
     
     SpreadsheetApp.flush();
     sheetInv.activate();
-    ui.alert('✅ PASO 3 COMPLETADO:\nSistema listo para usar.\n\n¡Felicidades! 🎉');
-    
+    ui.alert('✅ PASO 3 COMPLETADO: Sistema listo para usar.');
   } catch (e) {
     ui.alert('❌ Error en Paso 3: ' + e.toString());
   }
@@ -276,9 +234,6 @@ function onOpen() {
     .addToUi();
 }
 
-/**
- * Agrega una marca a la lista de validación
- */
 function agregarNuevaMarca() {
   const ui = SpreadsheetApp.getUi();
   const resp = ui.prompt('➕ Nueva Marca', 'Introduce el nombre de la marca:', ui.ButtonSet.OK_CANCEL);

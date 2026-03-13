@@ -1,0 +1,264 @@
+<style>
+    :root {
+        --primary: #4a86e8;
+        --bg: #f8f9fa;
+        --text: #202124;
+        --border: #dadce0;
+        --white: #ffffff;
+        --gray: #5f6368;
+    }
+
+    body {
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    header {
+        background: var(--white);
+        padding: 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    header h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .search-box {
+        padding: 12px;
+        background: var(--white);
+        position: relative;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 10px 10px 10px 36px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+        /* Important for width 100% */
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 22px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gray);
+        font-size: 16px;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 110px;
+        /* Adjust based on header+search height */
+        left: 12px;
+        right: 12px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .search-item {
+        padding: 10px;
+        border-bottom: 1px solid var(--bg);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .search-item:hover {
+        background-color: #f1f3f4;
+    }
+
+    .item-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .item-meta {
+        font-size: 11px;
+        color: var(--gray);
+    }
+
+    .item-price {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .cart-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: var(--gray);
+        margin-top: 40px;
+    }
+
+    .empty-state i {
+        font-size: 32px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .cart-item {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .cart-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .item-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .btn-action {
+        background: none;
+        border: none;
+        color: var(--primary);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px;
+    }
+
+    .replacement-banner {
+        background: #fff4e5;
+        border-bottom: 1px solid #ffd8a8;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+    }
+
+    .btn-cancel {
+        background: #f08c00;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .is-replacing {
+        border: 2px solid var(--primary) !important;
+        background: #f0f7ff;
+    }
+
+    .btn-remove {
+        background: none;
+        border: none;
+        color: #ea4335;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .cart-item-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .qty-input,
+    .price-input {
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px;
+        text-align: center;
+    }
+
+    .qty-input {
+        width: 50px;
+    }
+
+    .price-input {
+        width: 80px;
+    }
+
+    .discount-row {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--gray);
+    }
+
+    .discount-input {
+        width: 70px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 4px;
+        text-align: right;
+    }
+
+    .item-subtotal {
+        margin-left: auto;
+        font-weight: 600;
+    }
+
+    .cart-footer {
+        background: var(--white);
+        border-top: 1px solid var(--border);
+        padding: 16px;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        background: var(--primary);
+        color: var(--white);
+        border: none;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-primary:disabled {
+        background: var(--gray);
+        cursor: not-allowed;
+    }
+</style>

@@ -1,0 +1,17 @@
+# Ignorar todo por defecto
+**/**
+
+# Permitir archivos de Apps Script
+!**/*.gs
+!**/*.html
+!appsscript.json
+
+# Exclusiones específicas (para no subir backups ni carpetas ocultas)
+backups/**
+media/**
+.git/**
+node_modules/**
+README.md
+.gitignore
+.claspignore
+.clasp.json

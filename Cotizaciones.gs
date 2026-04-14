@@ -41,12 +41,16 @@ function getInventarioData() {
     if (row[2] && row[2].toString().trim() !== "") { 
       let precio = row[13]; 
       if (typeof precio !== 'number') precio = 0;
+      let costoInicial = row[7] || 0;
+      let utilidadNeta = row[18] || 0;
       
       productos.push({
         sku: row[0] ? row[0].toString() : "S/M", // S/M si no hay SKU
         marca: row[1] || "",
         nombre: row[2].toString(),
         precio: Math.round(precio), 
+        costoInicial: parseFloat(costoInicial),
+        utilidadNeta: parseFloat(utilidadNeta),
         stock: row[5] || 0,         
         tipo: 'Producto'
       });

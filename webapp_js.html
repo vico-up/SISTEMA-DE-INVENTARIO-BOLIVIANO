@@ -1,0 +1,386 @@
+<script>
+    let currentTab = 'dashboard';
+
+    function initializeApp() {
+        console.log("Aplicación Inicializada");
+        showTab('dashboard');
+        cargarDatosGenerales();
+        cargarMarcas();
+    }
+
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) targetTab.classList.add('active');
+        const activeLink = document.querySelector(`.nav-link[onclick="showTab('${tabName}')"]`);
+        if (activeLink) activeLink.classList.add('active');
+        currentTab = tabName;
+    }
+
+    let productosCache = [];
+
+    function cargarDatosGenerales() {
+        google.script.run
+            .withSuccessHandler(function (productos) {
+                productosCache = productos;
+                // Dashboard
+                document.getElementById('total-productos').innerText = productos.length;
+                let valorTotal = productos.reduce((sum, item) => sum + (item.stock * item.precio), 0);
+                document.getElementById('valor-inventario').innerText = 'Bs. ' + valorTotal.toFixed(2);
+
+                // Tabla Inventario
+                renderizarTablaInventario(productos);
+            })
+            .withFailureHandler(function (error) {
+                console.error("Error cargando inventario: ", error);
+            })
+            .getInventarioData();
+    }
+
+    function renderizarTablaInventario(productos) {
+        const tbody = document.getElementById('tabla-inventario-body');
+        if (!tbody) return;
+
+        let html = '';
+        productos.forEach(p => {
+            let costo = typeof p.costoInicial === 'number' ? p.costoInicial.toFixed(2) : "0.00";
+            let facturado = typeof p.precio === 'number' ? p.precio.toFixed(2) : "0.00";
+            let utilidad = typeof p.utilidadNeta === 'number' ? p.utilidadNeta.toFixed(2) : "0.00";
+
+            html += `
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                    <td style="padding: 12px; color: #6c757d; font-size: 0.9em;">${p.sku}</td>
+                    <td style="padding: 12px; font-weight: 500;">${p.nombre}</td>
+                    <td style="padding: 12px; color: ${p.stock <= 5 ? '#dc3545' : '#28a745'}; font-weight: bold;">${p.stock}</td>
+                    <td style="padding: 12px; text-align:right;">Bs ${costo}</td>
+                    <td style="padding: 12px; text-align:right;">Bs ${facturado}</td>
+                    <td style="padding: 12px; text-align:right; font-weight:bold; color: ${p.utilidadNeta >= 0 ? '#28a745' : '#dc3545'}">Bs ${utilidad}</td>
+                </tr>
+            `;
+        });
+
+        if (productos.length === 0) {
+            html = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay productos en el inventario.</td></tr>';
+        }
+
+        tbody.innerHTML = html;
+    }
+
+    function filtrarInventarioWeb() {
+        const busqueda = document.getElementById('inventario-search').value.toLowerCase();
+        if (!busqueda) {
+            renderizarTablaInventario(productosCache);
+            return;
+        }
+        const filtrados = productosCache.filter(p =>
+            (p.nombre && p.nombre.toLowerCase().includes(busqueda)) ||
+            (p.sku && p.sku.toString().toLowerCase().includes(busqueda)) ||
+            (p.marca && p.marca.toLowerCase().includes(busqueda))
+        );
+        renderizarTablaInventario(filtrados);
+    }
+
+    function cargarMarcas() {
+        const select = document.getElementById('np-marca');
+        if (!select) return;
+        google.script.run
+            .withSuccessHandler(function (marcas) {
+                let html = '<option value="">Seleccione una marca...</option>';
+                marcas.forEach(m => html += `<option value="${m}">${m}</option>`);
+                select.innerHTML = html;
+            })
+            .withFailureHandler(function () {
+                select.innerHTML = '<option value="">Error cargando marcas</option>';
+            })
+            .getMarcas();
+    }
+
+    function agregarNuevaMarcaWeb() {
+        const nuevaMarca = prompt("Ingrese el nombre de la nueva marca:");
+        if (nuevaMarca && nuevaMarca.trim() !== "") {
+            const btn = document.querySelector('button[title="Agregar nueva marca"]');
+            const originalIcon = btn ? btn.innerHTML : '';
+            if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>'; btn.disabled = true; }
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+                    if (response.success) {
+                        alert("✅ Marca añadida exitosamente.");
+                        cargarMarcas(); // Refresca el dropdown automáticamente
+                    } else {
+                        alert("❌ Error: " + response.error);
+                    }
+                })
+                .withFailureHandler(function (error) {
+                    if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+                    alert("❌ Error de conexión: " + error.message);
+                })
+                .guardarNuevaMarca(nuevaMarca.trim());
+        }
+    }
+
+    function calcularUtilidadProyectada() {
+        const costoUnitario = parseFloat(document.getElementById('np-costo').value) || 0;
+        const costoExtra = parseFloat(document.getElementById('np-costo-extra').value) || 0;
+        const tieneFactura = document.getElementById('np-tiene-factura').value === "true";
+        let margenDeseado = (parseFloat(document.getElementById('np-margen').value) || 0) / 100;
+
+        // Prevent division by zero or negative margins safely for projection
+        if (margenDeseado >= 0.99) margenDeseado = 0.99;
+
+        const IVA_RATE = 0.13;
+        const IT_RATE = 0.03;
+
+        const creditoFiscal = tieneFactura ? (costoUnitario * IVA_RATE) : 0;
+        const precioCosto = (costoUnitario - creditoFiscal) + costoExtra;
+
+        let precioVenta = 0;
+        let precioFacturado = 0;
+        let it = 0;
+        let utilidadNeta = 0;
+
+        if (precioCosto > 0) {
+            precioVenta = precioCosto / (1 - margenDeseado);
+            precioFacturado = precioVenta / (1 - IVA_RATE);
+            it = precioFacturado * IT_RATE;
+            const utilidadBruta = precioVenta - precioCosto;
+            utilidadNeta = utilidadBruta - it;
+        }
+
+        const outCosto = document.getElementById('np-out-costo');
+        const outFacturado = document.getElementById('np-out-facturado');
+        const outNeta = document.getElementById('np-out-neta');
+        if (outCosto) outCosto.innerText = `Bs ${precioCosto.toFixed(2)}`;
+        if (outFacturado) outFacturado.innerText = `Bs ${precioFacturado.toFixed(2)}`;
+        if (outNeta) outNeta.innerText = `Bs ${utilidadNeta.toFixed(2)}`;
+    }
+
+    function submitNuevoProducto() {
+        const btn = document.getElementById('btn-save-np');
+        const msg = document.getElementById('np-mensaje');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Guardando...';
+        msg.style.display = 'none';
+
+        const dto = {
+            sku: document.getElementById('np-sku').value.trim(),
+            marca: document.getElementById('np-marca').value,
+            nombre: document.getElementById('np-nombre').value.trim(),
+            categoria: document.getElementById('np-categoria').value.trim(),
+            stock: parseInt(document.getElementById('np-stock').value) || 0,
+            costoUnitario: parseFloat(document.getElementById('np-costo').value) || 0,
+            tieneFactura: document.getElementById('np-tiene-factura').value === "true",
+            costoExtra: parseFloat(document.getElementById('np-costo-extra').value) || 0,
+            stockMinimo: parseInt(document.getElementById('np-stock-min').value) || 5,
+            margen: (parseFloat(document.getElementById('np-margen').value) || 0) / 100
+        };
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar en Inventario';
+                msg.style.display = 'block';
+
+                if (response.success) {
+                    msg.style.color = '#155724';
+                    msg.style.background = '#d4edda';
+                    msg.innerText = '✅ ' + response.message;
+                    document.getElementById('form-nuevo-producto').reset();
+                    // Refrescar lista principal de inventario silenciosamente
+                    cargarDatosGenerales();
+                } else {
+                    msg.style.color = '#721c24';
+                    msg.style.background = '#f8d7da';
+                    msg.innerText = '❌ Error: ' + response.error;
+                }
+            })
+            .withFailureHandler(function (error) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar en Inventario';
+                msg.style.display = 'block';
+                msg.style.color = '#721c24';
+                msg.style.background = '#f8d7da';
+                msg.innerText = '❌ Error de conexión: ' + error.message;
+            })
+            .guardarNuevoProducto(dto);
+    }
+
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                cliente: '',
+                descuento: 0,
+                busqueda: '',
+                inventario: [], // Se carga desde el backend
+                resultados: [],
+                carrito: [],
+                reemplazandoIndex: null,
+                procesando: false
+            }
+        },
+        computed: {
+            totalCotizacion() {
+                const subtotal = this.carrito.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+                return (subtotal - this.descuento).toFixed(2);
+            },
+            utilidadTotal() {
+                // Utilidad NETA: Suma de utilidades netas individuales calculadas por Sheets (Col S) - descuento global
+                const gananciaBase = this.carrito.reduce((sum, item) => sum + (item.cantidad * (item.utilidadNeta || 0)), 0);
+                return (gananciaBase - this.descuento).toFixed(2);
+            }
+        },
+        watch: {
+            // Auto-guardar borrador cuando algo cambie
+            carrito: {
+                handler: 'autoGuardar',
+                deep: true
+            },
+            cliente: 'autoGuardar',
+            descuento: 'autoGuardar'
+        },
+        mounted() {
+            // Cargar datos al iniciar
+            this.cargarInventario();
+            this.cargarBorrador();
+        },
+        methods: {
+            cargarDesdeHoja() {
+                this.procesando = true;
+                google.script.run.withSuccessHandler(data => {
+                    this.procesando = false;
+                    if (data) {
+                        this.cliente = data.cliente;
+                        this.descuento = data.descuento;
+                        // Recuperar la utilidadNeta relacionando con el inventario actual
+                        this.carrito = data.items.map(item => {
+                            const invItem = this.inventario.find(i => i.nombre === item.nombre || i.sku === item.sku);
+                            item.utilidadNeta = invItem ? invItem.utilidadNeta : 0;
+                            return item;
+                        });
+                    }
+                }).extraerDatosDePlantilla();
+            },
+            prepararReemplazo(index) {
+                this.reemplazandoIndex = index;
+                // Enfocar buscador
+                document.querySelector('.search-box input').focus();
+            },
+            seleccionarItem(item) {
+                if (this.reemplazandoIndex !== null) {
+                    // Reemplazar existente
+                    this.carrito[this.reemplazandoIndex] = { ...item, cantidad: 1, utilidadNeta: item.utilidadNeta || 0 };
+                    this.reemplazandoIndex = null;
+                } else {
+                    // Agregar nuevo
+                    this.agregarItem(item);
+                }
+                this.busqueda = '';
+                this.resultados = [];
+            },
+            autoGuardar() {
+                const data = {
+                    cliente: this.cliente,
+                    descuento: this.descuento,
+                    carrito: this.carrito
+                };
+                google.script.run.saveQuoteDraft(data);
+            },
+            cargarBorrador() {
+                google.script.run.withSuccessHandler(draft => {
+                    if (draft) {
+                        this.cliente = draft.cliente || '';
+                        this.descuento = draft.descuento || 0;
+                        this.carrito = draft.carrito || [];
+                    }
+                }).loadQuoteDraft();
+            },
+            cargarInventario() {
+                // Aumentamos los resultados en el filtro más adelante
+                google.script.run
+                    .withSuccessHandler(data => {
+                        console.log('Inventario cargado:', data);
+                        this.inventario = data;
+                        // Agregar servicios mock
+                        google.script.run.withSuccessHandler(servicios => {
+                            this.inventario = [...this.inventario, ...servicios];
+                        }).getServiciosData();
+                    })
+                    .withFailureHandler(err => console.error('Error cargando inventario:', err))
+                    .getInventarioData();
+            },
+            filtrarItems() {
+                if (this.busqueda.length < 2) {
+                    this.resultados = [];
+                    return;
+                }
+                const term = this.busqueda.toLowerCase();
+                this.resultados = this.inventario.filter(item =>
+                    (item.nombre && item.nombre.toLowerCase().includes(term)) ||
+                    (item.sku && item.sku.toString().toLowerCase().includes(term)) ||
+                    (item.marca && item.marca.toLowerCase().includes(term))
+                ).slice(0, 30); // Aumentar a 30 resultados
+            },
+            agregarItem(item) {
+                // Verificar si ya existe considerando SKU y Nombre (para evitar colisión de items S/M)
+                const existente = this.carrito.find(i => i.sku === item.sku && i.nombre === item.nombre);
+                if (existente) {
+                    existente.cantidad++;
+                } else {
+                    this.carrito.push({
+                        sku: item.sku,
+                        nombre: item.nombre,
+                        precio: item.precio,
+                        utilidadNeta: item.utilidadNeta || 0,
+                        cantidad: 1,
+                        tipo: item.tipo
+                    });
+                }
+                this.busqueda = '';
+                this.resultados = [];
+            },
+            eliminarItem(index) {
+                this.carrito.splice(index, 1);
+            },
+            limpiarCarrito() {
+                if (confirm('¿Borrar todo el carrito?')) {
+                    this.carrito = [];
+                }
+            },
+            generarPDF() {
+                this.procesando = true;
+                const cotizacion = {
+                    fecha: new Date().toISOString(),
+                    cliente: this.cliente,
+                    items: JSON.parse(JSON.stringify(this.carrito)),
+                    total: this.totalCotizacion
+                };
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        this.procesando = false;
+                        if (res.success) {
+                            alert(res.message);
+                            this.carrito = []; // Limpiar carrito tras éxito
+                        } else {
+                            alert('Error: ' + res.error);
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        this.procesando = false;
+                        alert('Error de conexión: ' + err);
+                    })
+                    .processQuote(cotizacion);
+            }
+        }
+    }).mount('#app');
+
+</script>

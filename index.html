@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <title>Sistema de Control de Inventario</title>
+
+    <!-- Vue.js 3 y Phosphor Icons -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Inyectar Estilos WebApp y Antiguos Estilos del Cotizador -->
+    <?!= include('webapp_css'); ?>
+
+</head>
+
+<body onload="initializeApp()">
+    <div class="app-container">
+
+        <!-- MENÚ LATERAL -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>LA NUBE SYSTEM</h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a class="nav-link active" onclick="showTab('dashboard')">
+                        <span class="nav-icon">📊</span>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showTab('inventario')">
+                        <span class="nav-icon">📦</span>Inventario
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showTab('cotizador')">
+                        <span class="nav-icon">📝</span>Cotizador Inteligente
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showTab('nuevo-producto')">
+                        <span class="nav-icon">➕</span>Nuevo Producto
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="main-content">
+
+            <!-- Pestaña 1: DASHBOARD -->
+            <div id="dashboard" class="tab-content active">
+                <div class="content-header">
+                    <h2>Dashboard Resumen</h2>
+                </div>
+                <div class="content-body">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-productos">Cargando...</div>
+                            <div class="stat-label">Total Productos</div>
+                        </div>
+                        <div class="stat-card money">
+                            <div class="stat-value" id="valor-inventario">Cargando...</div>
+                            <div class="stat-label">Valor del Inventario</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 2: INVENTARIO -->
+            <div id="inventario" class="tab-content">
+                <div class="content-header">
+                    <h2>Inventario Completo</h2>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header"
+                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <span>Buscador y Tabla de Inventario</span>
+                            <div class="search-box" style="position: relative; width: 300px; max-width: 100%;">
+                                <input type="text" id="inventario-search" placeholder="🔍 Buscar producto..."
+                                    onkeyup="if(typeof filtrarInventarioWeb === 'function') filtrarInventarioWeb()"
+                                    style="width: 100%; padding: 8px 12px; border: 1px solid #c2dbe6; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 0; overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 800px;">
+                                <thead style="background: #FAFBFC;">
+                                    <tr style="border-bottom: 2px solid #E5F2F7; color: #2E86AB; font-size: 0.95em;">
+                                        <th style="padding: 15px 12px; font-weight: 600;">SKU</th>
+                                        <th style="padding: 15px 12px; font-weight: 600;">Producto</th>
+                                        <th style="padding: 15px 12px; font-weight: 600;">Stock</th>
+                                        <th style="padding: 15px 12px; font-weight: 600; text-align:right;">Costo (Bs)
+                                        </th>
+                                        <th style="padding: 15px 12px; font-weight: 600; text-align:right;">P. Facturado
+                                            (Bs)</th>
+                                        <th
+                                            style="padding: 15px 12px; font-weight: 600; text-align:right; color:#28a745;">
+                                            Utilidad Neta (Bs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-inventario-body">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;"><i
+                                                class="ph ph-spinner ph-spin"
+                                                style="font-size: 1.5rem; margin-right: 10px; vertical-align: middle;"></i>
+                                            Cargando inventario...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 3: COTIZADOR (Módulo Vue Reactivo) -->
+            <div id="cotizador" class="tab-content">
+                <div class="content-header">
+                    <h2>Cotizador Inteligente</h2>
+                </div>
+                <div class="content-body">
+
+                    <!-- CONTENEDOR VUE.JS (Extraído de sidebar.html) -->
+                    <div id="app" class="vue-container card"
+                        style="height: 75vh; border: 1px solid #E5F2F7; background: white;">
+
+                        <!-- Header -->
+                        <header>
+                            <h2>Nueva Cotización</h2>
+                            <div class="actions" style="display:flex; gap:10px;">
+                                <button @click="cargarDesdeHoja" title="Cargar desde la Hoja Central" class="btn-icon"
+                                    style="background:none; border:none; color:#2E86AB; cursor:pointer; font-size:1.2rem;"><i
+                                        class="ph ph-file-arrow-down"></i></button>
+                                <button @click="limpiarCarrito" title="Limpiar todo" class="btn-icon"
+                                    style="background:none; border:none; color:#dc3545; cursor:pointer; font-size:1.2rem;"><i
+                                        class="ph ph-trash"></i></button>
+                            </div>
+                        </header>
+
+                        <!-- Banner Reemplazo -->
+                        <div v-if="reemplazandoIndex !== null" class="replacement-banner">
+                            <span>Modo Reemplazo: <b>{{ carrito[reemplazandoIndex].nombre }}</b></span>
+                            <button @click="reemplazandoIndex = null" class="btn-cancel">Cancelar</button>
+                        </div>
+
+                        <!-- Cliente -->
+                        <div class="client-box" style="padding: 12px; border-bottom: 1px solid var(--border);">
+                            <label style="font-size: 0.9em; font-weight: bold; color: var(--gray);">Nombre del
+                                Cliente</label>
+                            <input type="text" v-model="cliente" placeholder="Ej: Importadora del Norte"
+                                style="width: 100%; box-sizing: border-box; margin-top: 5px;">
+                        </div>
+
+                        <!-- Buscador -->
+                        <div class="search-box">
+                            <input type="text" v-model="busqueda"
+                                placeholder="Buscar producto por código o descripción..." @input="filtrarItems"
+                                style="width: 100%;">
+                            <i class="ph ph-magnifying-glass search-icon"></i>
+                        </div>
+
+                        <!-- Resultados Búsqueda Dropdown -->
+                        <div v-if="busqueda && resultados.length > 0" class="search-results">
+                            <div v-for="(item, index) in resultados" :key="item.sku + item.nombre + index"
+                                class="search-item" @click="seleccionarItem(item)">
+                                <div class="item-info">
+                                    <span class="item-name">{{ item.nombre }}</span>
+                                    <span class="item-meta">{{ item.marca }} • Stock: {{ item.stock }}</span>
+                                </div>
+                                <div class="item-price">Bs {{ item.precio }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Lista Carrito -->
+                        <div class="cart-list" style="flex:1; overflow-y:auto; padding:12px;">
+                            <div v-if="carrito.length === 0" class="empty-state">
+                                <i class="ph ph-shopping-cart"></i>
+                                <p>La cotización está vacía</p>
+                            </div>
+                            <div v-else v-for="(item, index) in carrito" :key="index" class="cart-item"
+                                :class="{ 'is-replacing': reemplazandoIndex === index }">
+                                <div class="cart-item-header">
+                                    <span class="item-name">{{ item.nombre }}</span>
+                                    <div class="item-actions">
+                                        <button @click="prepararReemplazo(index)" class="btn-action"
+                                            title="Reemplazar"><i class="ph ph-arrows-clockwise"></i></button>
+                                        <button @click="eliminarItem(index)" class="btn-remove"><i
+                                                class="ph ph-x"></i></button>
+                                    </div>
+                                </div>
+                                <div class="cart-item-controls">
+                                    <input type="number" v-model.number="item.cantidad" min="1" class="qty-input">
+                                    <span class="x-sign">x</span>
+                                    <input type="number" v-model.number="item.precio" class="price-input">
+                                    <span class="item-subtotal">Bs {{ (item.cantidad * item.precio).toFixed(2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Totales -->
+                        <footer class="cart-footer">
+                            <div class="total-row discount-row" style="display:flex; justify-content:space-between;">
+                                <span>Descuento (Bs):</span>
+                                <input type="number" v-model.number="descuento" class="discount-input">
+                            </div>
+                            <div class="total-row"
+                                style="display:flex; justify-content:space-between; font-size:1.1em;">
+                                <span>TOTAL:</span>
+                                <span class="total-amount" style="color: #2E86AB;">Bs {{ totalCotizacion }}</span>
+                            </div>
+                            <div class="profit-indicator"
+                                style="text-align:right; font-size:0.85em; color: #28a745; margin-bottom:10px;">
+                                Ganancia Est.: Bs {{ utilidadTotal || '0.00' }}
+                            </div>
+                            <button class="btn-primary" @click="generarPDF"
+                                :disabled="carrito.length === 0 || procesando"
+                                style="background: #2E86AB; display:flex; justify-content:center; align-items:center; gap:8px;">
+                                <span v-if="!procesando"><i class="ph ph-file-pdf"></i> Generar Cotización</span>
+                                <span v-else>Procesando...</span>
+                            </button>
+                        </footer>
+                    </div>
+                    <!-- FIN CONTENEDOR VUE.JS -->
+
+                </div>
+            </div>
+
+            <!-- Pestaña 4: NUEVO PRODUCTO -->
+            <div id="nuevo-producto" class="tab-content">
+                <div class="content-header">
+                    <h2>Registrar Nuevo Producto</h2>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">Información del Producto (Integrado con Validaciones)</div>
+                        <div class="card-body">
+                            <form id="form-nuevo-producto" onsubmit="event.preventDefault(); submitNuevoProducto();">
+                                <div
+                                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">SKU
+                                            (Código único)</label>
+                                        <input type="text" id="np-sku" required
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Marca
+                                            Oficial</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <select id="np-marca" required style="width: 100%; box-sizing: border-box;">
+                                                <option value="">Cargando marcas...</option>
+                                            </select>
+                                            <button type="button" onclick="agregarNuevaMarcaWeb()"
+                                                style="padding: 0 12px; background: #5DADE2; color: white; border: none; border-radius: 6px; cursor: pointer;"
+                                                title="Agregar nueva marca">
+                                                <i class="ph ph-plus" style="font-weight:bold;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Nombre
+                                            Exacto del Producto</label>
+                                        <input type="text" id="np-nombre" required
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Categoría
+                                            General</label>
+                                        <input type="text" id="np-categoria" required
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Stock
+                                            Inicial</label>
+                                        <input type="number" id="np-stock" min="0" required
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">¿Compra
+                                            con Factura?</label>
+                                        <select id="np-tiene-factura" required
+                                            style="width: 100%; box-sizing: border-box;"
+                                            onchange="if(typeof calcularUtilidadProyectada === 'function') calcularUtilidadProyectada()">
+                                            <option value="true">Sí (Aplica Crédito 13%)</option>
+                                            <option value="false">No (Sin Crédito Fiscal)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Costo
+                                            Inicial (Bs)</label>
+                                        <input type="number" id="np-costo" min="0" step="0.01" required
+                                            oninput="if(typeof calcularUtilidadProyectada === 'function') calcularUtilidadProyectada()"
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Costo
+                                            Extra/Envío (Bs)</label>
+                                        <input type="number" id="np-costo-extra" min="0" step="0.01" value="0"
+                                            oninput="if(typeof calcularUtilidadProyectada === 'function') calcularUtilidadProyectada()"
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Stock
+                                            Mínimo Alerta</label>
+                                        <input type="number" id="np-stock-min" value="5" min="0"
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Margen
+                                            de Utilidad (%)</label>
+                                        <div style="display: flex; gap: 10px;">
+                                            <input type="number" id="np-margen" value="30" min="0" max="100"
+                                                oninput="if(typeof calcularUtilidadProyectada === 'function') calcularUtilidadProyectada()"
+                                                style="width: 100%; box-sizing: border-box;">
+                                            <span
+                                                style="display: flex; align-items: center; color: #6c757d; font-weight: 600;">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    style="background: #e8f5e9; padding: 15px; border-radius: 6px; border: 1px solid #c3e6cb; margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 10px 0; color: #155724;">Proyección Calculada <small
+                                            style="font-weight:normal; color:#6c757d;">(Aplica IVA/IT)</small></h4>
+                                    <div
+                                        style="display: flex; justify-content: space-between; font-size: 0.95em; flex-wrap: wrap; gap: 10px;">
+                                        <div><strong>Costo Base C/ CF:</strong> <span id="np-out-costo"
+                                                style="color:#555;">Bs 0.00</span></div>
+                                        <div><strong>Precio Sugerido:</strong> <span id="np-out-facturado"
+                                                style="color:#2E86AB; font-weight:bold;">Bs 0.00</span></div>
+                                        <div><strong>Utilidad NETA:</strong> <span id="np-out-neta"
+                                                style="color:#28a745; font-weight:bold; font-size:1.1em;">Bs 0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" id="btn-save-np"
+                                    style="width: 100%; padding: 15px; background: #2E86AB; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 1.1em;">
+                                    <i class="ph ph-floppy-disk"></i> Guardar en Inventario
+                                </button>
+                            </form>
+                            <div id="np-mensaje"
+                                style="margin-top: 15px; text-align: center; font-weight: 600; padding: 10px; border-radius: 6px; display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Inyectar Lógicas JS -->
+    <?!= include('webapp_js'); ?>
+
+</body>
+
+</html>

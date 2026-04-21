@@ -33,6 +33,17 @@ function getMarcas() {
 }
 
 /**
+ * Obtiene la lista de categorías oficiales
+ */
+function getCategorias() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('_Categorias');
+  if (!sheet) return [];
+  const datos = sheet.getDataRange().getValues();
+  return datos.map(row => row[0]).filter(cat => cat);
+}
+
+/**
  * Guarda un nuevo producto en la hoja de Inventario, inyectando las fórmulas correspondientes.
  */
 function guardarNuevoProducto(datos) {
@@ -122,6 +133,30 @@ function guardarNuevaMarca(marca) {
     sheet.appendRow([marca]);
     SpreadsheetApp.flush();
     return { success: true, message: "Marca guardada." };
+  } catch(error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Guarda una nueva categoría directamente desde la Web App.
+ */
+function guardarNuevaCategoria(categoria) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('_Categorias');
+    if (!sheet) {
+      sheet = ss.insertSheet('_Categorias'); // Generar si fue borrado accidentalmente
+      sheet.hideSheet();
+    }
+    
+    const datos = sheet.getDataRange().getValues();
+    const existe = datos.some(row => row && row[0] && row[0].toString().trim().toLowerCase() === categoria.toLowerCase());
+    if (existe) return { success: false, error: "La categoría ya existe en tu base de datos." };
+
+    sheet.appendRow([categoria]);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Categoría guardada." };
   } catch(error) {
     return { success: false, error: error.message };
   }

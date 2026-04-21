@@ -42,6 +42,18 @@ function paso1_Estructura() {
       ss.deleteSheet(ss.getSheetByName('_Marcas_OLD'));
     }
     sheetMarcas.hideSheet();
+
+    let sheetCats = ss.getSheetByName('_Categorias');
+    if (sheetCats) {
+      sheetCats.clear();
+      sheetCats.setName('_Categorias_OLD');
+    }
+    sheetCats = ss.insertSheet('_Categorias');
+    if (ss.getSheetByName('_Categorias_OLD')) {
+      ss.deleteSheet(ss.getSheetByName('_Categorias_OLD'));
+    }
+    sheetCats.hideSheet();
+    
     
     // 2. Encabezados
     const headers = [
@@ -173,27 +185,47 @@ function paso2d_Validacion() {
   try {
     console.log('--- INICIO PASO 2D (VALIDACIÓN) ---');
     
-    // 1. Asegurar marcas iniciales
+    // 1. Asegurar marcas y categorías iniciales
     sheetMarcas.showSheet();
     if (sheetMarcas.getLastRow() < 1) {
       const marcas = [['Genérico'], ['Sony'], ['Samsung'], ['TP-Link'], ['Xiaomi']];
       sheetMarcas.getRange(1, 1, marcas.length, 1).setValues(marcas);
     }
+    
+    let sheetCats = ss.getSheetByName('_Categorias');
+    if (sheetCats) {
+      sheetCats.showSheet();
+      if (sheetCats.getLastRow() < 1) {
+        const categorias = [['Cámaras'], ['Redes'], ['Accesorios'], ['Computación'], ['Servicios']];
+        sheetCats.getRange(1, 1, categorias.length, 1).setValues(categorias);
+      }
+    }
     SpreadsheetApp.flush();
     
-    // 2. Crear y aplicar regla
+    // 2. Crear y aplicar regla para Marcas
     const rangeMarcas = sheetMarcas.getRange('A1:A100');
-    const rule = SpreadsheetApp.newDataValidation()
+    const ruleMarcas = SpreadsheetApp.newDataValidation()
       .requireValueInRange(rangeMarcas, true)
-      .setHelpText('Selecciona una marca de la lista.')
+      .setHelpText('Selecciona una marca de la lista o créala en el web app.')
       .build();
-    
-    sheetInv.getRange(2, 2, FILAS_INICIALES).setDataValidation(rule);
+    sheetInv.getRange(2, 2, FILAS_INICIALES).setDataValidation(ruleMarcas);
     sheetMarcas.hideSheet();
+
+    // 3. Crear y aplicar regla para Categorías
+    if (sheetCats) {
+      const rangeCats = sheetCats.getRange('A1:A100');
+      const ruleCats = SpreadsheetApp.newDataValidation()
+        .requireValueInRange(rangeCats, true)
+        .setHelpText('Selecciona una categoría de la lista o créala en el web app.')
+        .build();
+      sheetInv.getRange(2, 5, FILAS_INICIALES).setDataValidation(ruleCats);
+      sheetCats.hideSheet();
+    }
+    
     SpreadsheetApp.flush();
     
     console.log('--- PASO 2D COMPLETADO ---');
-    ui.alert('✅ PASO 2D COMPLETADO: Lista desplegable de marcas activada.');
+    ui.alert('✅ PASO 2D COMPLETADO: Listas desplegables activadas para Marcas y Categorías.');
     
   } catch (e) {
     console.error('ERROR EN PASO 2D: ' + e.toString());
@@ -469,6 +501,7 @@ function onOpen() {
     .addSeparator()
     .addItem('🌐 Abrir Sistema Web', 'lanzarWebApp')
     .addItem('🛠️ Configurar Plantilla', 'setupPlantillaCotizacion')
+    .addItem('🛠️ Crear/Resetear Historial', 'setupHistorial')
     .addSeparator()
     .addItem('➕ Agregar Nueva Marca', 'agregarNuevaMarca')
     .addToUi();
@@ -586,6 +619,49 @@ function setupPlantillaCotizacion() {
     ui.alert('❌ Error creando plantilla: ' + e.toString());
   }
 }
+
+/**
+ * Crea la hoja del Historial de Cotizaciones
+ */
+function setupHistorial() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  
+  try {
+    let sheet = ss.getSheetByName('Historial');
+    if (!sheet) {
+      sheet = ss.insertSheet('Historial');
+    } else {
+      const resp = ui.alert('⚠️ Advertencia', 'La hoja Historial ya existe. ¿Deseas borrar TODO el historial actual para reiniciar?', ui.ButtonSet.YES_NO);
+      if (resp !== ui.Button.YES) return;
+      sheet.clear();
+    }
+    
+    const headers = ['Fecha', 'Cliente', 'Total Cotizado (Bs)', 'Ganancia Est. (Bs)', 'Descuento Aplicado', 'Detalle Resumen (Cantidades)'];
+    sheet.getRange(1, 1, 1, headers.length)
+      .setValues([headers])
+      .setFontWeight('bold')
+      .setBackground('#4a86e8')
+      .setFontColor('white')
+      .setHorizontalAlignment('center');
+    
+    sheet.setColumnWidth(1, 150);
+    sheet.setColumnWidth(2, 200);
+    sheet.setColumnWidth(3, 150);
+    sheet.setColumnWidth(4, 150);
+    sheet.setColumnWidth(5, 150);
+    sheet.setColumnWidth(6, 400);
+    
+    // Format Moneda para columnas 3, 4, 5
+    sheet.getRange('C:E').setNumberFormat('#,##0.00');
+    sheet.setFrozenRows(1);
+    
+    ui.alert('✅ Hoja Historial configurada exitosamente.');
+  } catch (e) {
+    ui.alert('❌ Error configurando historial: ' + e.toString());
+  }
+}
+
 
 /**
  * Muestra un popup con la URL de la Web App en vez del Sidebar legacy

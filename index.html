@@ -44,6 +44,11 @@
                         <span class="nav-icon">➕</span>Nuevo Producto
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" onclick="showTab('historial')">
+                        <span class="nav-icon">📚</span>Historial
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -272,8 +277,17 @@
                                         <label
                                             style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Categoría
                                             General</label>
-                                        <input type="text" id="np-categoria" required
-                                            style="width: 100%; box-sizing: border-box;">
+                                        <div style="display: flex; gap: 8px;">
+                                            <select id="np-categoria" required
+                                                style="width: 100%; box-sizing: border-box;">
+                                                <option value="">Cargando categorías...</option>
+                                            </select>
+                                            <button type="button" onclick="agregarNuevaCategoriaWeb()"
+                                                style="padding: 0 12px; background: #5DADE2; color: white; border: none; border-radius: 6px; cursor: pointer;"
+                                                title="Agregar nueva categoría">
+                                                <i class="ph ph-plus" style="font-weight:bold;"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label
@@ -321,7 +335,7 @@
                                             style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Margen
                                             de Utilidad (%)</label>
                                         <div style="display: flex; gap: 10px;">
-                                            <input type="number" id="np-margen" value="30" min="0" max="100"
+                                            <input type="number" id="np-margen" value="30" min="0" max="100" step="0.01"
                                                 oninput="if(typeof calcularUtilidadProyectada === 'function') calcularUtilidadProyectada()"
                                                 style="width: 100%; box-sizing: border-box;">
                                             <span
@@ -353,6 +367,48 @@
                             <div id="np-mensaje"
                                 style="margin-top: 15px; text-align: center; font-weight: 600; padding: 10px; border-radius: 6px; display: none;">
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña 5: HISTORIAL -->
+            <div id="historial" class="tab-content">
+                <div class="content-header"
+                    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <h2>Historial de Cotizaciones Emitidas</h2>
+                    <button onclick="cargarHistorialWeb()"
+                        style="padding: 8px 16px; background: white; border: 1px solid #2E86AB; color: #2E86AB; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-arrows-clockwise"></i> Refrescar
+                    </button>
+                </div>
+                <div class="content-body">
+                    <div class="card">
+                        <div class="card-header">Registro Histórico</div>
+                        <div class="card-body" style="padding: 0; overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 800px;">
+                                <thead style="background: #FAFBFC;">
+                                    <tr style="border-bottom: 2px solid #E5F2F7; color: #2E86AB; font-size: 0.95em;">
+                                        <th style="padding: 15px 12px; font-weight: 600;">Fecha</th>
+                                        <th style="padding: 15px 12px; font-weight: 600;">Cliente</th>
+                                        <th style="padding: 15px 12px; font-weight: 600;">Resumen Items</th>
+                                        <th style="padding: 15px 12px; font-weight: 600; text-align:right;">Desc. (Bs)
+                                        </th>
+                                        <th style="padding: 15px 12px; font-weight: 600; text-align:right;">Total (Bs)
+                                        </th>
+                                        <th
+                                            style="padding: 15px 12px; font-weight: 600; text-align:right; color:#28a745;">
+                                            Ganancia (Bs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-historial-body">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">
+                                            Cargando historial...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

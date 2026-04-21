@@ -6,6 +6,8 @@
         showTab('dashboard');
         cargarDatosGenerales();
         cargarMarcas();
+        cargarCategorias();
+        cargarHistorialWeb();
     }
 
     function showTab(tabName) {
@@ -85,6 +87,43 @@
         renderizarTablaInventario(filtrados);
     }
 
+    function cargarHistorialWeb() {
+        const tbody = document.getElementById('tabla-historial-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;"><i class="ph ph-spinner ph-spin"></i> Cargando datos...</td></tr>';
+
+        google.script.run
+            .withSuccessHandler(function (historial) {
+                let html = '';
+                if (historial.length === 0) {
+                    html = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay cotizaciones registradas aún. Asegúrate de ejecutar la configuración del Historial en Google Sheets.</td></tr>';
+                } else {
+                    historial.forEach(h => {
+                        let total = typeof h.total === 'number' ? h.total.toFixed(2) : parseFloat(h.total || 0).toFixed(2);
+                        let ganancia = typeof h.ganancia === 'number' ? h.ganancia.toFixed(2) : parseFloat(h.ganancia || 0).toFixed(2);
+                        let descuento = typeof h.descuento === 'number' ? h.descuento.toFixed(2) : parseFloat(h.descuento || 0).toFixed(2);
+
+                        html += `
+                            <tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 12px; color: #6c757d; font-size: 0.9em; white-space: nowrap;">${h.fecha}</td>
+                                <td style="padding: 12px; font-weight: 500;">${h.cliente}</td>
+                                <td style="padding: 12px; font-size: 0.8em; color: #555; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${h.detalle}">${h.detalle}</td>
+                                <td style="padding: 12px; text-align:right;">Bs ${descuento}</td>
+                                <td style="padding: 12px; text-align:right; font-weight:bold; color: #2E86AB;">Bs ${total}</td>
+                                <td style="padding: 12px; text-align:right; font-weight:bold; color: ${h.ganancia >= 0 ? '#28a745' : '#dc3545'}">Bs ${ganancia}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                tbody.innerHTML = html;
+            })
+            .withFailureHandler(function (error) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#dc3545;">Error cargando historial: ' + error.message + '</td></tr>';
+            })
+            .getHistorialCotizaciones();
+    }
+
     function cargarMarcas() {
         const select = document.getElementById('np-marca');
         if (!select) return;
@@ -98,6 +137,21 @@
                 select.innerHTML = '<option value="">Error cargando marcas</option>';
             })
             .getMarcas();
+    }
+
+    function cargarCategorias() {
+        const select = document.getElementById('np-categoria');
+        if (!select) return;
+        google.script.run
+            .withSuccessHandler(function (cats) {
+                let html = '<option value="">Seleccione una categoría...</option>';
+                cats.forEach(m => html += `<option value="${m}">${m}</option>`);
+                select.innerHTML = html;
+            })
+            .withFailureHandler(function () {
+                select.innerHTML = '<option value="">Error cargando categorías</option>';
+            })
+            .getCategorias();
     }
 
     function agregarNuevaMarcaWeb() {
@@ -122,6 +176,31 @@
                     alert("❌ Error de conexión: " + error.message);
                 })
                 .guardarNuevaMarca(nuevaMarca.trim());
+        }
+    }
+
+    function agregarNuevaCategoriaWeb() {
+        const nuevaCat = prompt("Ingrese el nombre de la nueva categoría:");
+        if (nuevaCat && nuevaCat.trim() !== "") {
+            const btn = document.querySelector('button[title="Agregar nueva categoría"]');
+            const originalIcon = btn ? btn.innerHTML : '';
+            if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>'; btn.disabled = true; }
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+                    if (response.success) {
+                        alert("✅ Categoría añadida exitosamente.");
+                        cargarCategorias();
+                    } else {
+                        alert("❌ Error: " + response.error);
+                    }
+                })
+                .withFailureHandler(function (error) {
+                    if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+                    alert("❌ Error de conexión: " + error.message);
+                })
+                .guardarNuevaCategoria(nuevaCat.trim());
         }
     }
 

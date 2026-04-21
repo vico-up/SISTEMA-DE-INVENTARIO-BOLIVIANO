@@ -115,6 +115,26 @@ function processQuote(data) {
     sheetPlantilla.getRange('E42').setValue(descuento);       // Descuento
     sheetPlantilla.getRange('E43').setValue(subtotalGeneral - descuento); // Total
     
+    // 5. Guardar en el Historial
+    const sheetHistorial = ss.getSheetByName('Historial');
+    if (sheetHistorial) {
+      const fechaCorta = new Date();
+      const clienteN = data.cliente || 'Consumidor Final';
+      const totalGeneral = subtotalGeneral - descuento;
+      const gananciaBruta = items.reduce((sum, item) => sum + (item.cantidad * (item.utilidadNeta || 0)), 0);
+      const gananciaReal = gananciaBruta - descuento;
+      const detalleResumen = items.map(i => `${i.cantidad}x ${i.nombre}`).join(' | ');
+      
+      sheetHistorial.appendRow([
+        fechaCorta,
+        clienteN,
+        totalGeneral,
+        gananciaReal,
+        descuento,
+        detalleResumen
+      ]);
+    }
+    
     SpreadsheetApp.flush();
     
     return { success: true, message: '¡Cotización generada! Revisa la hoja "Plantilla_Cotizacion".' };
@@ -176,4 +196,38 @@ function extraerDatosDePlantilla() {
     descuento: descuento,
     items: items
   };
+}
+
+/**
+ * Obtiene el historial de cotizaciones para mostrar en la web
+ */
+function getHistorialCotizaciones() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Historial');
+  if (!sheet) return [];
+  
+  const datos = sheet.getDataRange().getValues();
+  if (datos.length <= 1) return []; // Solo encabezados o vacía
+  
+  const historial = [];
+  // Recorrer de forma inversa para tener lo más reciente arriba
+  for (let i = datos.length - 1; i > 0; i--) {
+    const row = datos[i];
+    if (row[0]) {
+      let fechaFormat = row[0];
+      if (fechaFormat instanceof Date) {
+        fechaFormat = fechaFormat.toLocaleDateString() + ' ' + fechaFormat.toLocaleTimeString();
+      }
+      
+      historial.push({
+        fecha: fechaFormat,
+        cliente: row[1],
+        total: row[2] || 0,
+        ganancia: row[3] || 0,
+        descuento: row[4] || 0,
+        detalle: row[5] || ''
+      });
+    }
+  }
+  return historial;
 }

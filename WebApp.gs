@@ -161,3 +161,28 @@ function guardarNuevaCategoria(categoria) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Sobreescribe valores bases específicos en una fila sin alterar fórmulas ajenas.
+ */
+function actualizarProductoBase(datos) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Inventario');
+    const i = datos.fila;
+    
+    if (!i || i < 2) return { success: false, error: 'Identificador de fila inválido.' };
+
+    sheet.getRange(i, 3).setValue(datos.nombre || ""); // Col C (Nombre)
+    sheet.getRange(i, 4).setValue(datos.enlace || ""); // Col D (Descripción / Enlace)
+    sheet.getRange(i, 6).setValue(datos.stock || 0); // Col F (Stock Actual)
+    sheet.getRange(i, 8).setValue(datos.costoInicial || 0); // Col H (Costo Unitario)
+    sheet.getRange(i, 10).setValue(datos.costoExtra || 0); // Col J (Costos Extras)
+    sheet.getRange(i, 12).setValue(datos.margen || 0); // Col L (Margen Utilidad)
+    
+    SpreadsheetApp.flush();
+    return { success: true, message: 'Producto actualizado correctamente.' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}

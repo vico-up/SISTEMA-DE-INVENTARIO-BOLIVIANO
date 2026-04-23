@@ -54,9 +54,15 @@
             let facturado = typeof p.precio === 'number' ? p.precio.toFixed(2) : "0.00";
             let utilidad = typeof p.utilidadNeta === 'number' ? p.utilidadNeta.toFixed(2) : "0.00";
 
+            const linkBtn = p.enlace && p.enlace.trim() !== "" ? `<span style="cursor:pointer; color:#e52d27; margin-left:8px;" onclick="window.open('${p.enlace}', '_blank')" title="Ver Ficha / Video"><i class="ph ph-youtube-logo" style="font-size: 1.1em;"></i></span>` : '';
+
             html += `
                 <tr style="border-bottom: 1px solid #f0f0f0;">
-                    <td style="padding: 12px; color: #6c757d; font-size: 0.9em;">${p.sku}</td>
+                    <td style="padding: 12px; color: #6c757d; font-size: 0.9em; white-space:nowrap;">
+                        ${p.sku}
+                        <span style="cursor:pointer; color:#5DADE2; margin-left:8px;" onclick="abrirModalEdicion('${p.sku}')" title="Editar Producto"><i class="ph ph-pencil-simple" style="font-size: 1.1em;"></i></span>
+                        ${linkBtn}
+                    </td>
                     <td style="padding: 12px; font-weight: 500;">${p.nombre}</td>
                     <td style="padding: 12px; color: ${p.stock <= 5 ? '#dc3545' : '#28a745'}; font-weight: bold;">${p.stock}</td>
                     <td style="padding: 12px; text-align:right;">Bs ${costo}</td>
@@ -204,6 +210,64 @@
         }
     }
 
+    function abrirModalEdicion(sku) {
+        // Encontrar en el local cache
+        const p = productosCache.find(x => x.sku === sku);
+        if (!p) return;
+
+        document.getElementById('edit-fila').value = p.fila;
+        document.getElementById('edit-sku').value = p.sku;
+        document.getElementById('edit-nombre').value = p.nombre;
+        document.getElementById('edit-enlace').value = p.enlace || '';
+        document.getElementById('edit-costo').value = p.costoInicial;
+        document.getElementById('edit-costoextra').value = p.costoExtra;
+        document.getElementById('edit-stock').value = p.stock;
+        document.getElementById('edit-margen').value = (p.margen * 100).toFixed(2);
+
+        document.getElementById('modal-edicion').style.display = 'flex';
+        calcularUtilidadEdicion(); // Actualizar panel de proyeccion visual
+    }
+
+    function cerrarModalEdicion() {
+        document.getElementById('modal-edicion').style.display = 'none';
+    }
+
+    function guardarEdicionWeb() {
+        const btn = document.getElementById('btn-save-edit');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Guardando...';
+        btn.disabled = true;
+
+        const dto = {
+            fila: parseInt(document.getElementById('edit-fila').value),
+            sku: document.getElementById('edit-sku').value,
+            nombre: document.getElementById('edit-nombre').value,
+            enlace: document.getElementById('edit-enlace').value.trim(),
+            costoInicial: parseFloat(document.getElementById('edit-costo').value) || 0,
+            costoExtra: parseFloat(document.getElementById('edit-costoextra').value) || 0,
+            stock: parseInt(document.getElementById('edit-stock').value) || 0,
+            margen: (parseFloat(document.getElementById('edit-margen').value) || 0) / 100
+        };
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                if (res.success) {
+                    cerrarModalEdicion();
+                    cargarDatosGenerales(); // Refrescar pantalla principal silenciosamente
+                } else {
+                    alert("❌ Error: " + res.error);
+                }
+            })
+            .withFailureHandler(function (err) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                alert("❌ Error de conexión: " + err.message);
+            })
+            .actualizarProductoBase(dto);
+    }
+
     function calcularUtilidadProyectada() {
         const costoUnitario = parseFloat(document.getElementById('np-costo').value) || 0;
         const costoExtra = parseFloat(document.getElementById('np-costo-extra').value) || 0;
@@ -240,6 +304,41 @@
         if (outNeta) outNeta.innerText = `Bs ${utilidadNeta.toFixed(2)}`;
     }
 
+    function calcularUtilidadEdicion() {
+        const costoUnitario = parseFloat(document.getElementById('edit-costo').value) || 0;
+        const costoExtra = parseFloat(document.getElementById('edit-costoextra').value) || 0;
+        let margenDeseado = (parseFloat(document.getElementById('edit-margen').value) || 0) / 100;
+
+        if (margenDeseado >= 0.99) margenDeseado = 0.99;
+
+        const IVA_RATE = 0.13;
+        const IT_RATE = 0.03;
+
+        // Proyección básica (Muestra IVA crédito para homogeneidad en el modal de edición estándar)
+        const creditoFiscal = costoUnitario * IVA_RATE;
+        const precioCosto = (costoUnitario - creditoFiscal) + costoExtra;
+
+        let precioVenta = 0;
+        let precioFacturado = 0;
+        let it = 0;
+        let utilidadNeta = 0;
+
+        if (precioCosto > 0) {
+            precioVenta = precioCosto / (1 - margenDeseado);
+            precioFacturado = precioVenta / (1 - IVA_RATE);
+            it = precioFacturado * IT_RATE;
+            const utilidadBruta = precioVenta - precioCosto;
+            utilidadNeta = utilidadBruta - it;
+        }
+
+        const outCosto = document.getElementById('edit-out-costo');
+        const outFacturado = document.getElementById('edit-out-facturado');
+        const outNeta = document.getElementById('edit-out-neta');
+        if (outCosto) outCosto.innerText = `Bs ${precioCosto.toFixed(2)}`;
+        if (outFacturado) outFacturado.innerText = `Bs ${precioFacturado.toFixed(2)}`;
+        if (outNeta) outNeta.innerText = `Bs ${utilidadNeta.toFixed(2)}`;
+    }
+
     function submitNuevoProducto() {
         const btn = document.getElementById('btn-save-np');
         const msg = document.getElementById('np-mensaje');
@@ -252,6 +351,7 @@
             sku: document.getElementById('np-sku').value.trim(),
             marca: document.getElementById('np-marca').value,
             nombre: document.getElementById('np-nombre').value.trim(),
+            descripcion: document.getElementById('np-descripcion') ? document.getElementById('np-descripcion').value.trim() : '',
             categoria: document.getElementById('np-categoria').value.trim(),
             stock: parseInt(document.getElementById('np-stock').value) || 0,
             costoUnitario: parseFloat(document.getElementById('np-costo').value) || 0,

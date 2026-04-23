@@ -45,11 +45,15 @@ function getInventarioData() {
       let utilidadNeta = row[18] || 0;
       
       productos.push({
-        sku: row[0] ? row[0].toString() : "S/M", // S/M si no hay SKU
+        fila: i + 1, // i starts at 1, so row 2 is index 1. fila: i + 1 correctly maps index to sheet row Number.
+        sku: row[0] ? row[0].toString() : "S/M",
         marca: row[1] || "",
         nombre: row[2].toString(),
+        enlace: row[3] || "", // Columna D (index 3)
         precio: Math.round(precio), 
         costoInicial: parseFloat(costoInicial),
+        costoExtra: parseFloat(row[9] || 0), // Col J (Index 9)
+        margen: parseFloat(row[11] || 0), // Col L (Index 11)
         utilidadNeta: parseFloat(utilidadNeta),
         stock: row[5] || 0,         
         tipo: 'Producto'

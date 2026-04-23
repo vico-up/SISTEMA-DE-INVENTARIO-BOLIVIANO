@@ -275,6 +275,13 @@
                                     </div>
                                     <div style="grid-column: 1 / -1;">
                                         <label
+                                            style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Enlace
+                                            del Producto (YouTube / Ficha Web)</label>
+                                        <input type="url" id="np-descripcion" placeholder="https://..."
+                                            style="width: 100%; box-sizing: border-box;">
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <label
                                             style="display: block; margin-bottom: 5px; color: #6c757d; font-weight: 600;">Categoría
                                             General</label>
                                         <div style="display: flex; gap: 8px;">
@@ -414,6 +421,86 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal Flotante Edición de Producto -->
+    <div id="modal-edicion"
+        style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px);">
+        <div class="card"
+            style="width: 420px; max-width: 90%; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div class="card-header"
+                style="display:flex; justify-content: space-between; background: #2E86AB; color: white;">
+                <span><i class="ph ph-pencil-simple"></i> Edición Rápida</span>
+                <span style="cursor:pointer; padding: 0 5px;" onclick="cerrarModalEdicion()">✖</span>
+            </div>
+            <div class="card-body">
+                <input type="hidden" id="edit-fila">
+                <input type="hidden" id="edit-sku">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight:600; font-size:13px; color: #555;">Nombre del Producto:</label>
+                    <input type="text" id="edit-nombre"
+                        style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight:600; font-size:13px; color: #555;">Enlace Web / YouTube:</label>
+                    <input type="url" id="edit-enlace" placeholder="https://..."
+                        style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-weight:600; font-size:13px; color: #555;">Costo Uni. (Bs):</label>
+                        <input type="number" id="edit-costo" step="0.01"
+                            oninput="if(typeof calcularUtilidadEdicion === 'function') calcularUtilidadEdicion()"
+                            style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:600; font-size:13px; color: #555;">Costo Ext. (Bs):</label>
+                        <input type="number" id="edit-costoextra" step="0.01"
+                            oninput="if(typeof calcularUtilidadEdicion === 'function') calcularUtilidadEdicion()"
+                            style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight:600; font-size:13px; color: #555;">Stock Actual:</label>
+                        <input type="number" id="edit-stock"
+                            style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:600; font-size:13px; color: #555;">Margen (%):</label>
+                        <input type="number" id="edit-margen" step="0.01"
+                            oninput="if(typeof calcularUtilidadEdicion === 'function') calcularUtilidadEdicion()"
+                            style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div
+                    style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e1e4e8; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                        <span style="color:#555; font-size:0.9em;">Costo Total Estimado:</span>
+                        <strong id="edit-out-costo" style="color:#333;">Bs 0.00</strong>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                        <span style="color:#555; font-size:0.9em;">Precio Facturado:</span>
+                        <strong id="edit-out-facturado" style="color:#333;">Bs 0.00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color:#28a745; font-weight:bold; font-size:1em;">Utilidad Neta (Aprox):</span>
+                        <strong id="edit-out-neta" style="color:#28a745; font-size:1em;">Bs 0.00</strong>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="cerrarModalEdicion()"
+                        style="flex:1; padding:10px; background:#e0e0e0; color:#333; border:none; border-radius:5px; cursor:pointer; font-weight: 500;">Cancelar</button>
+                    <button type="button" id="btn-save-edit" onclick="guardarEdicionWeb()"
+                        style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;"><i
+                            class="ph ph-floppy-disk"></i> Guardar</button>
+                </div>
+            </div>
         </div>
     </div>
 
